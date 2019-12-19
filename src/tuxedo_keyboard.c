@@ -86,6 +86,12 @@ MODULE_VERSION("2.0.0");
 
 #define BRIGHTNESS_STEP            25
 
+// Key event codes
+#define INT_KEY_B_UP		KEY_KBDILLUMUP
+#define INT_KEY_B_DOWN		KEY_KBDILLUMDOWN
+#define INT_KEY_B_TOGGLE	KEY_LIGHTS_TOGGLE
+#define INT_KEY_B_NEXT		KEY_KBDILLUMTOGGLE
+
 struct color_t {
 	u32 code;
 	char* name;
@@ -557,6 +563,10 @@ static void tuxedo_wmi_notify(u32 value, void *context)
 
 	switch (key_event) {
 	case WMI_KEYEVENT_CODE_DECREASE_BACKLIGHT:
+		input_report_key(tuxedo_input_device, INT_KEY_B_DOWN, 1);
+		input_sync(tuxedo_input_device);
+		input_report_key(tuxedo_input_device, INT_KEY_B_DOWN, 0);
+		input_sync(tuxedo_input_device);
 		if (kbd_led_state.brightness == BRIGHTNESS_MIN
 		    || (kbd_led_state.brightness - 25) < BRIGHTNESS_MIN) {
 			set_brightness(BRIGHTNESS_MIN);
@@ -567,6 +577,10 @@ static void tuxedo_wmi_notify(u32 value, void *context)
 		break;
 
 	case WMI_KEYEVENT_CODE_INCREASE_BACKLIGHT:
+		input_report_key(tuxedo_input_device, INT_KEY_B_UP, 1);
+		input_sync(tuxedo_input_device);
+		input_report_key(tuxedo_input_device, INT_KEY_B_UP, 0);
+		input_sync(tuxedo_input_device);
 		if (kbd_led_state.brightness == BRIGHTNESS_MAX
 		    || (kbd_led_state.brightness + 25) > BRIGHTNESS_MAX) {
 			set_brightness(BRIGHTNESS_MAX);
@@ -582,10 +596,18 @@ static void tuxedo_wmi_notify(u32 value, void *context)
 //		break;
 
 	case WMI_KEYEVENT_CODE_NEXT_BLINKING_PATTERN:
+		input_report_key(tuxedo_input_device, INT_KEY_B_NEXT, 1);
+		input_sync(tuxedo_input_device);
+		input_report_key(tuxedo_input_device, INT_KEY_B_NEXT, 0);
+		input_sync(tuxedo_input_device);
 		set_next_color_whole_kb();
 		break;
 
 	case WMI_KEYEVENT_CODE_TOGGLE_STATE:
+		input_report_key(tuxedo_input_device, INT_KEY_B_TOGGLE, 1);
+		input_sync(tuxedo_input_device);
+		input_report_key(tuxedo_input_device, INT_KEY_B_TOGGLE, 0);
+		input_sync(tuxedo_input_device);
 		set_enabled(kbd_led_state.enabled == 0 ? 1 : 0);
 		break;
 
@@ -664,7 +686,12 @@ static int __init tuxedo_input_init(void)
 	tuxedo_input_device->id.bustype = BUS_HOST;
 	tuxedo_input_device->dev.parent = &tuxedo_platform_device->dev;
 
-	set_bit(EV_KEY, tuxedo_input_device->evbit);
+	// Setup key events
+	tuxedo_input_device->evbit[0] = BIT_MASK(EV_KEY);
+	tuxedo_input_device->keybit[BIT_WORD(INT_KEY_B_UP)] |= BIT_MASK(INT_KEY_B_UP);
+	tuxedo_input_device->keybit[BIT_WORD(INT_KEY_B_DOWN)] |= BIT_MASK(INT_KEY_B_DOWN);
+	tuxedo_input_device->keybit[BIT_WORD(INT_KEY_B_TOGGLE)] |= BIT_MASK(INT_KEY_B_TOGGLE);
+	tuxedo_input_device->keybit[BIT_WORD(INT_KEY_B_NEXT)] |= BIT_MASK(INT_KEY_B_NEXT);
 
 	err = input_register_device(tuxedo_input_device);
 	if (unlikely(err)) {
